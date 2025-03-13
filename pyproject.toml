@@ -1,10 +1,17 @@
-[project]
+[tool.poetry]
+authors = ["Matthias Lübken <matthias.luebken@gmail.com>"]
+description = ""
+license = "ASL-2"
 name = "bundestag-mcp"
+readme = "readme.md"
 version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
-requires-python = ">=3.13"
-dependencies = [
-    "httpx>=0.28.1",
-    "mcp[cli]>=1.3.0"
-]
+package-mode = false
+
+[tool.poetry.dependencies]
+httpx = "^0.28.1"
+mcp = {extras = ["cli"], version = "^1.3.0"}
+python = "~3.13"
+
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core"]

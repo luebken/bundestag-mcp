@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import os
 import sys
 from datetime import datetime
@@ -10,7 +12,7 @@ from mcp.server.fastmcp import FastMCP
 
 load_dotenv()
 
-mcp = FastMCP("Bundetag")
+mcp = FastMCP("Bundetag-Plenarprotokolle")
 
 async def query_api(url: str, query_params) -> dict[str, Any] | None:
     headers = {
