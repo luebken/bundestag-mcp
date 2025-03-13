@@ -41,11 +41,13 @@ uv pip install -e .
 
 ## Debug
 ```sh
-npx @modelcontextprotocol/inspector uv --directory /ABSOLUTE/PATH/TO/PARENT/FOLDER/bundestag-mcp/ run server.py
+npx @modelcontextprotocol/inspector uv --directory $(PWD) run server.py
 ```
 
 ## Roadmap
 - [x] Last protocol
+- [ ] Error handling
+- [ ] Logging https://modelcontextprotocol.io/docs/tools/debugging#server-side-logging
 - [ ] Protocol for a specific date / number
 - [ ] Protocols for a date range
 - [ ] Support [MCP SSE](https://modelcontextprotocol.io/docs/concepts/transports#server-sent-events-sse)
