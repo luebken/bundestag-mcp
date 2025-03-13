@@ -43,10 +43,14 @@ async def get_last_protocol_xml_url():
     xml_url = None
     if results:
         if "documents" in results:
-            print(f"\nTotal documents found: {len(results['documents'])}. Trying last.", file=sys.stderr)
-            last = results['documents'][0]
-            #pdf = last["fundstelle"]["pdf_url"]
-            xml_url = last["fundstelle"]["xml_url"]
+            print(f"Total documents found: {len(results['documents'])}.", file=sys.stderr)
+            for doc in results['documents']:
+                if "xml_url" not in doc["fundstelle"]:
+                    print(f"Couldn't find 'xml_url'. Trying next document.", file=sys.stderr)
+                else:
+                    print(f"Using protocol from {doc["fundstelle"]["datum"]}", file=sys.stderr)
+                    xml_url = doc["fundstelle"]["xml_url"]
+                    break
             
     return xml_url
 
