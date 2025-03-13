@@ -78,7 +78,7 @@ npx @modelcontextprotocol/inspector uv --directory $(PWD) run server.py
 - [ ] Logging <https://modelcontextprotocol.io/docs/tools/debugging#server-side-logging>
 - [ ] Protocol for a specific date / number
 - [ ] Protocols for a date range
-- [ ] Support [MCP SSE](https://modelcontextprotocol.io/docs/concepts/transports#server-sent-events-sse)
+- [x] Support [MCP SSE](https://modelcontextprotocol.io/docs/concepts/transports#server-sent-events-sse)
 - [ ] Other API endpoints: Vorgänge, Drucksachen, Aktivitäten
 - [ ] Keyword / Similiarity Search
 
