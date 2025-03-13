@@ -1,19 +1,26 @@
 # Bundestag MCP
 
-This is a simple [MCP](https://modelcontextprotocol.io/) server to chat with the German Bundestag via their [published protocols](https://dip.bundestag.de/).
+This is a simple [MCP server](https://modelcontextprotocol.io/) which gives acces to the [protocols](https://dip.bundestag.de/) of the German parliament. Once installed you can "chat with the parliament":
+
+
+![Bundestag MCP running in Claude](screenshot.png)
+
+This MCP server needs to be installed with a Chat client. We'll use [Claude Desktop](https://claude.ai/download) as an example.
+
 
 ## Install
-* Clone and cd this repo
 
-## Pip install dependencies
 ```sh
+# clone this repo
+git clone git@github.com:luebken/bundestag-mcp.git; cd bundestag-mcp
+
+# Install python dependencies
+uv venv
+source .venv/bin/activate
 uv pip install -e .
-```
 
-Install into bundestag-mcp server for [Claude Desktop](https://claude.ai/download)
-
-```json
-# /Users/xxx/Library/Application Support/Claude/claude_desktop_config.json
+# Configure bundestag-mcp for Claude > Settings > Developer > Edit Config
+# /Users/YOUR_USERNAME/Library/Application Support/Claude/claude_desktop_config.json
 {
   "mcpServers": {
       "bundestag-mcp": {
@@ -27,19 +34,23 @@ Install into bundestag-mcp server for [Claude Desktop](https://claude.ai/downloa
       }
   }
 }
+# Restart Claude. 
+# Test with the prompt
+# > Was wurde in der letzten Plenarsitzung im Bundestag diskutiert?
 ```
-
 
 ## Debug
 ```sh
-npx @modelcontextprotocol/inspector uv --directory /Users/mdl/workspace/luebken/bundestag-mcp/ run server.py
+npx @modelcontextprotocol/inspector uv --directory /ABSOLUTE/PATH/TO/PARENT/FOLDER/bundestag-mcp/ run server.py
 ```
 
-## Test / Example
-
-Prompt: Was wurde in der letzten Plenarsitzung im Bundestag diskutiert?
+## Roadmap
+- [x] Last protocol
+- [ ] Protocol for a specific date / number
+- [ ] Protocols for a date range
+- [ ] Support [MCP SSE](https://modelcontextprotocol.io/docs/concepts/transports#server-sent-events-sse)
+- [ ] Other API endpoints: Vorgänge, Drucksachen, Aktivitäten
+- [ ] Keyword / Similiarity Search
 
 ## Resources
 *  https://dip.bundestag.de/%C3%BCber-dip/hilfe/api
-*  https://search.dip.bundestag.de/api/v1/swagger-ui/
-*  https://modelcontextprotocol.io/quickstart/server
