@@ -1,14 +1,21 @@
-from typing import Any
-import httpx
-from mcp.server.fastmcp import FastMCP
+import os
+import sys
 from datetime import datetime
+from typing import Any
+
+import httpx
+from dotenv import load_dotenv
+
+from mcp.server.fastmcp import FastMCP
+
+load_dotenv()
 
 mcp = FastMCP("Bundetag")
 
 async def query_api(url: str, query_params) -> dict[str, Any] | None:
     headers = {
         "Accept": "application/json",
-        "Authorization": "ApiKey I9FKdCn.hbfefNWCY336dL6x62vfwNKpoN2RZ1gp21"
+        "Authorization": f"ApiKey {os.getenv('BUNDESTAG_API_KEY')}"
     }
     async with httpx.AsyncClient() as client:
         try:
@@ -36,7 +43,7 @@ async def get_last_protocol_xml_url():
     xml_url = None
     if results:
         if "documents" in results:
-            print(f"\nTotal documents found: {len(results['documents'])}. Using last.")
+            print(f"\nTotal documents found: {len(results['documents'])}. Trying last.", file=sys.stderr)
             last = results['documents'][0]
             #pdf = last["fundstelle"]["pdf_url"]
             xml_url = last["fundstelle"]["xml_url"]
@@ -59,5 +66,5 @@ async def get_last_bundestagsprotocol() -> str:
     return last_protocol_xml
 
 if __name__ == "__main__":
-    print("Starting Bundestag-MCP")
+    print("Starting Bundestag-MCP", file=sys.stderr)
     mcp.run(transport='stdio')
