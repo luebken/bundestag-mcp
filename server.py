@@ -2,20 +2,36 @@
 
 import os
 import sys
+import re
+import json
+
 from datetime import datetime
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 import click
 import httpx
-
-
+from fastapi import Response
 from dotenv import load_dotenv
 
 from mcp.server.fastmcp import FastMCP
+from server_resources import (
+    ResourceType,
+    create_resource,
+    SessionMetadata,
+    TableOfContents,
+    AgendaItem,
+    SpeakerList,
+    Speech,
+    AttachmentList,
+    FullProtocol,
+)
 
 load_dotenv()
 
 mcp = FastMCP("Bundetag-Plenarprotokolle")
+
+# Globaler Cache für das letzte Protokoll
+cached_protocol = None
 
 
 async def query_api(url: str, query_params) -> dict[str, Any] | None:
@@ -62,7 +78,7 @@ async def get_last_protocol_xml_url():
                     )
                 else:
                     print(
-                        f"Using protocol from {doc["fundstelle"]["datum"]}",
+                        f"Using protocol from {doc['fundstelle']['datum']}",
                         file=sys.stderr,
                     )
                     xml_url = doc["fundstelle"]["xml_url"]
@@ -72,15 +88,240 @@ async def get_last_protocol_xml_url():
 
 
 @mcp.tool()
-async def get_last_bundestagsprotocol() -> str:
+async def get_last_bundestagsplenarprotokoll() -> str:
     """Get the protocol of the last German parliament session.
     Das Protokoll der letzten Plenarsitzung des Deutschen Bundestags.
     """
+    global cached_protocol
 
-    xml_url = await get_last_protocol_xml_url()
-    last_protocol_xml = await query_api(xml_url, {"format": "xml"})
+    if not cached_protocol:
+        xml_url = await get_last_protocol_xml_url()
+        cached_protocol = await query_api(xml_url, {"format": "xml"})
 
-    return last_protocol_xml
+    return cached_protocol
+
+
+async def get_protocol_xml() -> bytes:
+    """Hilfsfunktion, um das Protokoll als bytes zu erhalten."""
+    global cached_protocol
+
+    if not cached_protocol:
+        await get_last_bundestagsprotocol()
+
+    return cached_protocol
+
+
+@mcp.resource("plenarprotokoll://metadata")
+async def protocol_metadata() -> str:
+    """Metadaten der letzten Bundestagssitzung."""
+    protocol_xml = await get_protocol_xml()
+    resource = create_resource(ResourceType.METADATA, protocol_xml)
+
+    return dict(
+        uri="plenarprotokoll://metadata",
+        name="Metadaten der letzten Bundestagssitzung",
+        text=resource.to_json(),
+        mimeType="application/json",
+    )
+
+
+@mcp.resource("plenarprotokoll://toc")
+async def protocol_toc() -> str:
+    """Inhaltsverzeichnis der letzten Bundestagssitzung."""
+    protocol_xml = await get_protocol_xml()
+    resource = create_resource(ResourceType.TOC, protocol_xml)
+
+    return dict(
+        uri="plenarprotokoll://toc",
+        name="Inhaltsverzeichnis der letzten Bundestagssitzung",
+        text=resource.to_json(),
+        mimeType="application/json",
+    )
+
+
+@mcp.resource("plenarprotokoll://speaker-list")
+async def protocol_speaker_list() -> str:
+    """Liste aller Redner der letzten Bundestagssitzung."""
+    protocol_xml = await get_protocol_xml()
+    resource = create_resource(ResourceType.SPEAKER_LIST, protocol_xml)
+
+    return dict(
+        uri="plenarprotokoll://speaker-list",
+        name="Rednerliste der letzten Bundestagssitzung",
+        text=resource.to_json(),
+        mimeType="application/json",
+    )
+
+
+@mcp.resource("plenarprotokoll://agenda-items")
+async def protocol_agenda_items() -> str:
+    """Tagesordnungspunkte der letzten Bundestagssitzung."""
+    protocol_xml = await get_protocol_xml()
+    resource = create_resource(ResourceType.AGENDA_ITEM, protocol_xml)
+
+    return dict(
+        uri="plenarprotokoll://agenda-items",
+        name="Tagesordnungspunkte der letzten Bundestagssitzung",
+        text=resource.to_json(),
+        mimeType="application/json",
+    )
+
+
+@mcp.resource("plenarprotokoll://speeches")
+async def protocol_speeches() -> str:
+    """Alle Reden der letzten Bundestagssitzung."""
+    protocol_xml = await get_protocol_xml()
+    resource = create_resource(ResourceType.SPEECH, protocol_xml)
+
+    return dict(
+        uri="plenarprotokoll://speeches",
+        name="Alle Reden der letzten Bundestagssitzung",
+        text=resource.to_json(),
+        mimeType="application/json",
+    )
+
+
+@mcp.resource("plenarprotokoll://attachments")
+async def protocol_attachments() -> str:
+    """Anlagen der letzten Bundestagssitzung."""
+    protocol_xml = await get_protocol_xml()
+    resource = create_resource(ResourceType.ATTACHMENT_LIST, protocol_xml)
+
+    return dict(
+        uri="plenarprotokoll://attachments",
+        name="Anlagen der letzten Bundestagssitzung",
+        text=resource.to_json(),
+        mimeType="application/json",
+    )
+
+
+@mcp.resource("plenarprotokoll://full")
+async def protocol_full() -> str:
+    """Vollständiges Protokoll der letzten Bundestagssitzung."""
+    protocol_xml = await get_protocol_xml()
+    resource = create_resource(ResourceType.FULL_PROTOCOL, protocol_xml)
+
+    return str(
+        uri="plenarprotokoll://full",
+        name="Vollständiges Protokoll der letzten Bundestagssitzung",
+        text=resource.to_json(),
+        mimeType="application/json",
+    )
+
+
+# Dynamische Ressourcen über URI-Templates
+
+
+@mcp.resource("plenarprotokoll://speech/{speech_id}")
+async def plenarprotokoll_speech_by_id(speech_id: str) -> str:
+    """Eine bestimmte Rede aus der letzten Bundestagssitzung."""
+    protocol_xml = await get_protocol_xml()
+    resource = create_resource(ResourceType.SPEECH, protocol_xml, speech_id=speech_id)
+
+    return dict(
+        uri=f"plenarprotokoll://speech/{speech_id}",
+        name=f"Rede mit ID {speech_id} aus der letzten Bundestagssitzung",
+        text=resource.to_json(),
+        mimeType="application/json",
+    )
+
+
+@mcp.resource("plenarprotokoll://speaker/{speaker_id}")
+async def plenarprotokoll_speaker_speeches(speaker_id: str) -> str:
+    """Alle Reden eines bestimmten Redners aus der letzten Bundestagssitzung."""
+    protocol_xml = await get_protocol_xml()
+
+    # Erst alle Reden holen
+    speech_resource = create_resource(ResourceType.SPEECH, protocol_xml)
+    speeches = speech_resource.speeches
+
+    # Reden nach Redner filtern
+    filtered_speeches = [
+        speech
+        for speech in speeches
+        if speech.get("redner", {}).get("id") == speaker_id
+    ]
+
+    # Neues Resource-Objekt erstellen
+    filtered_resource = Speech(protocol_xml)
+    filtered_resource.speeches = filtered_speeches
+
+    return dict(
+        uri=f"plenarprotokoll://speaker/{speaker_id}",
+        name=f"Reden des Redners mit ID {speaker_id} aus der letzten Bundestagssitzung",
+        text=filtered_resource.to_json(),
+        mimeType="application/json",
+    )
+
+
+@mcp.resource("plenarprotokoll://fraction/{fraction_name}")
+async def plenarprotokoll_fraction_speeches(fraction_name: str) -> str:
+    """Alle Reden einer bestimmten Fraktion aus der letzten Bundestagssitzung."""
+    protocol_xml = await get_protocol_xml()
+
+    # Erst alle Reden holen
+    speech_resource = create_resource(ResourceType.SPEECH, protocol_xml)
+    speeches = speech_resource.speeches
+
+    # Nach Fraktion filtern
+    filtered_speeches = [
+        speech
+        for speech in speeches
+        if speech.get("redner", {}).get("fraktion") == fraction_name
+    ]
+
+    # Neues Resource-Objekt erstellen
+    filtered_resource = Speech(protocol_xml)
+    filtered_resource.speeches = filtered_speeches
+
+    return dict(
+        uri=f"plenarprotokoll://fraction/{fraction_name}",
+        name=f"Reden der Fraktion {fraction_name} aus der letzten Bundestagssitzung",
+        text=filtered_resource.to_json(),
+        mimeType="application/json",
+    )
+
+
+@mcp.resource("plenarprotokoll://search/{keyword}")
+async def plenarprotokoll_search(keyword: str) -> str:
+    """Suche nach einem Stichwort in allen Reden der letzten Bundestagssitzung."""
+    protocol_xml = await get_protocol_xml()
+
+    # Erst alle Reden holen
+    speech_resource = create_resource(ResourceType.SPEECH, protocol_xml)
+    speeches = speech_resource.speeches
+
+    # Nach Keyword suchen
+    keyword_lower = keyword.lower()
+    search_results = []
+
+    for speech in speeches:
+        content = speech.get("inhalt", "").lower()
+        if keyword_lower in content:
+            # Kontext um das Keyword herum extrahieren
+            matches = []
+            for match in re.finditer(re.escape(keyword_lower), content):
+                start = max(0, match.start() - 100)
+                end = min(len(content), match.end() + 100)
+                context = content[start:end]
+                matches.append(f"...{context}...")
+
+            result = {
+                "id": speech.get("id"),
+                "redner": speech.get("redner", {}),
+                "matches": matches,
+                "match_count": len(matches),
+            }
+            search_results.append(result)
+
+    return dict(
+        uri=f"plenarprotokoll://search/{keyword}",
+        name=f"Suche nach '{keyword}' in der letzten Bundestagssitzung",
+        text=json.dumps(
+            {"suchergebnisse": search_results}, ensure_ascii=False, indent=2
+        ),
+        mimeType="application/json",
+    )
 
 
 @click.command(help="MCP Server für Deutscher Bundestag Plenarprotokolle")
